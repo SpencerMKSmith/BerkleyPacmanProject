@@ -14,7 +14,7 @@
 
 from util import manhattanDistance
 from game import Directions
-import random, util
+import random, util, sys
 
 from game import Agent
 
@@ -201,7 +201,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         if atLowestDepth or gameState.isWin() or gameState.isLose(): return self.evaluationFunction(gameState)
         
         minValue = float("inf")
-        
+
         for legalAction in gameState.getLegalActions(ghostIndex):
             nextActionState = gameState.generateSuccessor(ghostIndex, legalAction)
 
@@ -289,13 +289,70 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
 
     def getAction(self, gameState):
         """
-          Returns the expectimax action using self.depth and self.evaluationFunction
+          Returns the minimax action from the current gameState using self.depth
+          and self.evaluationFunction.
 
-          All ghosts should be modeled as choosing uniformly at random from their
-          legal moves.
+          Here are some method calls that might be useful when implementing minimax.
+
+          gameState.getLegalActions(agentIndex):
+            Returns a list of legal actions for an agent
+            agentIndex=0 means Pacman, ghosts are >= 1
+
+          gameState.generateSuccessor(agentIndex, action):
+            Returns the successor game state after an agent takes an action
+
+          gameState.getNumAgents():
+            Returns the total number of agents in the game
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        bestAction, bestScore = self.MaxValue(gameState, -1)
+        return bestAction
+
+    def MaxValue(self, gameState, thisDepth):
+        thisDepth += 1
+
+        # If we are at the lowest depth then return some arbitrary action with the value of the state
+        atLowestDepth = (thisDepth >= self.depth)
+        if atLowestDepth or gameState.isWin() or gameState.isLose(): return ("Stop", self.evaluationFunction(gameState))
+
+        maxAction = ""
+        maxValue = float("-inf")
+
+        for legalAction in gameState.getLegalActions(0):
+            nextActionState = gameState.generateSuccessor(0, legalAction)
+
+            # Get the value of the minimizers after taking the action
+            stateValue = self.ExpectedValue(nextActionState, thisDepth, 1)
+            if stateValue > maxValue:
+                maxAction = legalAction
+                maxValue = stateValue
+
+        # Returns a tuple of the best action to take and the value of the path
+        return (maxAction, maxValue)
+
+    def ExpectedValue(self, gameState, thisDepth, ghostIndex):
+        '''This is the expectation node, so we take the probabilities'''
+
+        isLastGhost = ghostIndex == (gameState.getNumAgents() - 1)
+        atLowestDepth = (thisDepth == self.depth)
+
+        # Check if is maximum depth of terminal state
+        if atLowestDepth or gameState.isWin() or gameState.isLose(): return self.evaluationFunction(gameState)
+
+        #Instead of minimizing the value for each successor action, we take the average of all node values
+        #Then divide by all possible actions for that expectation node
+        totalValue = 0
+
+        for legalAction in gameState.getLegalActions(ghostIndex):
+            nextActionState = gameState.generateSuccessor(ghostIndex, legalAction)
+
+            # If it is the last ghost, call the Max function
+            if isLastGhost:
+                totalValue += self.MaxValue(nextActionState, thisDepth)[1]
+            else:  # Else call the min function for the next ghost
+               totalValue += self.ExpectedValue(nextActionState, thisDepth, ghostIndex + 1)
+
+        return totalValue/len(gameState.getLegalActions(ghostIndex))
 
 def betterEvaluationFunction(currentGameState):
     """
@@ -304,8 +361,59 @@ def betterEvaluationFunction(currentGameState):
 
       DESCRIPTION: <write something here so we know what you did>
     """
-    "*** YOUR CODE HERE ***"
-    return currentGameState.getScore();
+
+    # Use same state information as initial eval function from above
+    currentPosition = currentGameState.getPacmanPosition()
+    food = currentGameState.getFood().asList()
+    ghostStates = currentGameState.getGhostStates()
+    scaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+    capsules = currentGameState.getCapsules()
+
+    # Pellet weights used in linear weighted sum function
+    functionWeights = \
+    {
+        'closestPelletWeight'           : -2.5,
+        'furthestPelletWeight'          : -1.5,
+        'numPelletsWeight'              : -50,
+        'minGhostDistanceWeight'        : -50,
+        'existenceBooleanWeight'        : -5000,
+        'capsuleWeight'                 : -100
+    }
+
+    if food:
+        '''Gather a bunch of variables within the current configuration and construct a linear weighted sum'''
+        # (VARIABLE 1) Get the minimum distance to nearest food-pellet
+        closestPellet = min([util.manhattanDistance(currentPosition, pellet) for pellet in food])
+
+        # (VARIABLE 2) Get the maximum distance to nearest food-pellet
+        furthestPellet = max([util.manhattanDistance(currentPosition, pellet) for pellet in food])
+
+        # (VARIABLE 3) Get the number of food pellets existent on the grid
+        numPellets = len(food)
+
+        # (VARIABLE 4) Get the distance to the nearest ghost on the grid
+        minGhostDistance = [util.manhattanDistance(currentPosition, ghost.configuration.pos) for ghost in ghostStates if ghost.scaredTimer == 0]
+
+        # (VARIABLE 5) Get the status of Pacman's existence
+        existenceBoolean = 0
+        if minGhostDistance:
+            minGhostDistance = min(minGhostDistance)
+            if (minGhostDistance == 0):
+                existenceBoolean = 5
+            else:
+                minGhostDistance = 1/minGhostDistance
+        else:
+            minGhostDistance = 0
+
+        return \
+            functionWeights['closestPelletWeight']              * closestPellet         + \
+            functionWeights['furthestPelletWeight']             * furthestPellet        + \
+            functionWeights['numPelletsWeight']                 * numPellets            + \
+            functionWeights['minGhostDistanceWeight']           * (minGhostDistance)    + \
+            functionWeights['existenceBooleanWeight']           * existenceBoolean      + \
+            functionWeights['capsuleWeight']                    * len(capsules)
+
+    else: return sys.maxint
 
 # Abbreviation
 better = betterEvaluationFunction
