@@ -12,7 +12,7 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
-import mdp, util
+import mdp, util, sys
 
 from learningAgents import ValueEstimationAgent
 
@@ -43,9 +43,21 @@ class ValueIterationAgent(ValueEstimationAgent):
         self.iterations = iterations
         self.values = util.Counter() # A Counter is a dict with default 0
 
-        # Write value iteration code here
-        "*** YOUR CODE HERE ***"
+        # #We want to code the value iteration algorithm here
+        for value in range(self.iterations): #Loop through the number of required iterations
+            valueCopy = dict(self.values) 
+            for state in self.mdp.getStates(): 
 
+                #Try and find the best action based on the q-value of the current action in current state
+                bestStateValue = -1 * (sys.maxint)
+                for action in self.mdp.getPossibleActions(state):
+                    bestStateValue = max(bestStateValue, self.computeQValueFromValues(state, action))
+
+                #Account for states that have no legal actions
+                if (bestStateValue == (-1 * (sys.maxint))):
+                    bestStateValue = 0
+                valueCopy[state] = bestStateValue
+            self.values = valueCopy
 
     def getValue(self, state):
         """
@@ -53,26 +65,35 @@ class ValueIterationAgent(ValueEstimationAgent):
         """
         return self.values[state]
 
-
     def computeQValueFromValues(self, state, action):
         """
-          Compute the Q-value of action in state from the
-          value function stored in self.values.
+        Compute the Q-value of action in state from the
+        value function stored in self.values.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
 
+        bestQValue = 0
+        for nextState, transitionProbability in self.mdp.getTransitionStatesAndProbs(state, action):
+            bestQValue += transitionProbability * (self.mdp.getReward(state, action, nextState) + self.discount*self.values[nextState])
+        return bestQValue
+          
     def computeActionFromValues(self, state):
-        """
-          The policy is the best action in the given state
-          according to the values currently stored in self.values.
+      """
+        The policy is the best action in the given state
+        according to the values currently stored in self.values.
 
-          You may break ties any way you see fit.  Note that if
-          there are no legal actions, which is the case at the
-          terminal state, you should return None.
-        """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        You may break ties any way you see fit.  Note that if
+        there are no legal actions, which is the case at the
+        terminal state, you should return None.
+      """
+
+      #Store the best STATE & ACTION
+      bestActionPair = [-1 * sys.maxint, None]
+      for action in self.mdp.getPossibleActions(state):
+          currentValue = self.computeQValueFromValues(state, action)
+          if (currentValue > bestActionPair[0]):
+              bestActionPair[0] = currentValue
+              bestActionPair[1] = action
+      return bestActionPair[1]
 
     def getPolicy(self, state):
         return self.computeActionFromValues(state)
