@@ -144,7 +144,19 @@ class ExactInference(InferenceModule):
              of None will be returned if, and only if, the ghost is
              captured).
         """
+
+        # How far away we think we are from a particular ghost we are tracking (int)
         noisyDistance = observation
+
+        '''
+        Trying to intuitively understand the emission model:
+        EmissionModel computes probability of a ghost being in a position indirectly based on the noisy readings.
+        
+        -   If a "noisy distance" reading says that we are 4 away from a ghost, then the emission model will place
+            a higher weight for positions that are closer in the range of squares being 4 away from pacman.
+        
+        -   Likewise, squares that are much further than 4 away would get down-weighted.
+        '''
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
 
@@ -152,12 +164,19 @@ class ExactInference(InferenceModule):
         # Be sure to handle the "jail" edge case where the ghost is eaten
         # and noisyDistance is None
         allPossible = util.Counter()
+        #We want to update the belief state for every single position on the map given the evidence (emission model)
+
+        # Like it says above, if the ghost is in the jail, then the noisyDistance would read None
+        if (noisyDistance == None):
+
+            #We know 100% that the ghost will be in the jail position
+            allPossible[self.getJailPosition()] = 1.0
+
         for p in self.legalPositions:
             trueDistance = util.manhattanDistance(p, pacmanPosition)
             if emissionModel[trueDistance] > 0:
-                allPossible[p] = 1.0
-
-        "*** END YOUR CODE HERE ***"
+                #Update the belief state based on the evidence B(p) = P(e|p)*P(p)
+                allPossible[p] = emissionModel[trueDistance] * self.beliefs[p]
 
         allPossible.normalize()
         self.beliefs = allPossible
