@@ -148,9 +148,6 @@ class ExactInference(InferenceModule):
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
 
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
-
         # Replace this code with a correct observation update
         # Be sure to handle the "jail" edge case where the ghost is eaten
         # and noisyDistance is None
