@@ -234,8 +234,30 @@ class ExactInference(InferenceModule):
         are used and how they combine to give us a belief distribution over new
         positions after a time update from a particular position.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        # We want an entirely new dictionary for the states since we are updating them all
+        newBeliefValues = util.Counter()
+
+        # Loop through all legal positions that exist on the map
+        for position in self.legalPositions:
+            '''
+            Notes From Above:
+                In order to obtain the distribution over new positions for the ghost,
+                given its previous position (oldPos) as well as Pacman's current
+                position, use this line of code:
+                newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, oldPos))
+            '''
+
+            # This will get us a dictionary for ALL X' | position
+            # So, we should probably loop through each of these..
+            newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, position))
+
+            # The equation tells us to SUM over all probabilities for a given state
+            # This for loop is literally a direct translation from the equation
+            for newPos, prob in newPosDist.items():
+                newBeliefValues[newPos] += prob * self.beliefs[position]
+
+        self.beliefs = newBeliefValues
 
     def getBeliefDistribution(self):
         return self.beliefs
