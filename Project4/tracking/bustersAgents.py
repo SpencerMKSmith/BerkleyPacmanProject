@@ -162,5 +162,38 @@ class GreedyBustersAgent(BustersAgent):
         livingGhostPositionDistributions = \
             [beliefs for i, beliefs in enumerate(self.ghostBeliefs)
              if livingGhosts[i+1]]
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        '''What we will end up returning as our best "Greedy" action'''
+        actionWithMinimalDistance = 99999
+        actionTaken = None
+
+        for action in legal:
+            '''Everywhere we can go from our current position'''
+
+            newPosition = Actions.getSuccessor(pacmanPosition, action)
+
+            ghostPosition = (-1, -1)
+            ghostProbability = -1
+
+            '''Loop through all the ghosts'''
+            for ghost in livingGhostPositionDistributions:
+
+                '''Loop through the probabilities for each ghost'''
+                for posProb in ghost:
+                    if (ghost[posProb] > ghostProbability):
+                        ghostProbability = ghost[posProb]
+                        ghostPosition = posProb
+
+            '''
+            Ok, so now we have the ghost with which we think we know the position with most likelihood.
+            This is where we need to:
+                - Compute the distance from ourselves to the position we found, then update the best action if applica-
+                ble
+            '''
+            distFromSuccessorToGhost = self.distancer.getDistance(newPosition, ghostPosition)
+            if (distFromSuccessorToGhost < actionWithMinimalDistance):
+                actionWithMinimalDistance = distFromSuccessorToGhost
+                actionTaken = action
+
+        return actionTaken
+
