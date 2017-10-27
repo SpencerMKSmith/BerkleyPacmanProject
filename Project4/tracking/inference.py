@@ -477,7 +477,7 @@ class JointParticleFilter:
         self.numGhosts = gameState.getNumAgents() - 1
         self.ghostAgents = []
         self.legalPositions = legalPositions
-        self.particleDistribution = []
+        self.particles = []
         self.initializeParticles()
 
     def initializeParticles(self):
@@ -528,7 +528,7 @@ class JointParticleFilter:
 
             listOfParticles += [positionTuple] * numberInThisPosition
 
-        self.particleDistribution = listOfParticles
+        self.particles = listOfParticles
 
 
     def addGhostAgent(self, agent):
@@ -603,7 +603,7 @@ class JointParticleFilter:
         values = [i[0] for i in items]
         newListOfSamples = util.nSample(distribution, values, self.numParticles)
 
-        self.particleDistribution = newListOfSamples
+        self.particles = newListOfSamples
 
     def getParticleWithGhostInJail(self, particle, ghostIndex):
         """
@@ -663,14 +663,16 @@ class JointParticleFilter:
             newParticle = list(oldParticle) # A list of ghost positions
             # now loop through and update each entry in newParticle...
 
-            "*** YOUR CODE HERE ***"
+            for ghostIndex in range(self.numGhosts):
+                newPosDist = getPositionDistributionForGhost(setGhostPositions(gameState, newParticle), ghostIndex, self.ghostAgents[ghostIndex] )
+                newPositionForThisGhost = util.sample(newPosDist)
+                newParticle[ghostIndex] = newPositionForThisGhost
 
-            "*** END YOUR CODE HERE ***"
             newParticles.append(tuple(newParticle))
         self.particles = newParticles
 
     def getBeliefDistribution(self):
-        listOfParticles = self.particleDistribution
+        listOfParticles = self.particles
         numberOfParticles = len(listOfParticles)
 
         probabilityDistribution = util.Counter()
