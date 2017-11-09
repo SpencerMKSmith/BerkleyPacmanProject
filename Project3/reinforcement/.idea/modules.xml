@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../../Project4/ai_dqn_project/.idea/ai_dqn_project.iml" filepath="$PROJECT_DIR$/../../Project4/ai_dqn_project/.idea/ai_dqn_project.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/reinforcement.iml" filepath="$PROJECT_DIR$/.idea/reinforcement.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../Project4/tracking/.idea/tracking.iml" filepath="$PROJECT_DIR$/../../Project4/tracking/.idea/tracking.iml" />
     </modules>
   </component>
 </project>
