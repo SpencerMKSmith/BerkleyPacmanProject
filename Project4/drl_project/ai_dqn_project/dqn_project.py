@@ -10,7 +10,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--eval', action="store_true", default=False, help='Run in eval mode')
-parser.add_argument('--seed', type=int, default=13, help='Random seed')
+parser.add_argument('--seed', type=int, default=26, help='Random seed')
 args = parser.parse_args()
 
 random.seed(args.seed)
@@ -37,7 +37,6 @@ class DQN(object):
         # Don't start analyzing replay memory until we have a certain number
         self.min_replay_size = 1000
 
-
         # Create the training and target networks
         self.build_model()
 
@@ -45,8 +44,8 @@ class DQN(object):
         self.sess.run(tf.global_variables_initializer())
 
         # Set values of train network to the target network
-        self.update_target = []
-        self.copy_ops() #TODO: Rename
+        self.update_operations = []
+        self.create_copy_operations()
         # define your update operations here...
 
         self.num_episodes = 0
@@ -55,17 +54,19 @@ class DQN(object):
         self.saver = tf.train.Saver(tf.trainable_variables())
 
     # Copy train network values to target network
-	# TODO: Rename some variables here and the function name, change self.update_target
-	#		to something else
-    def copy_ops(self):
+    def create_copy_operations(self):
         trainable_variables = tf.trainable_variables('train')
         target_variables = tf.trainable_variables('target')
 
+        # For each variable, create an assign operation
         for i in range(0, len(trainable_variables)):
-            self.update_target.append(target_variables[i].assign(trainable_variables[i]))
+            self.update_operations.append(target_variables[i].assign(trainable_variables[i]))
 
-        self.sess.run(self.update_target)
+        # Perform the assign operations, copying everything from the train variables
+        #   to the target variables
+        self.sess.run(self.update_operations)
 
+        return self.update_operations
 
     def build_model(self):
 
@@ -110,8 +111,10 @@ class DQN(object):
             return act
 
         # With some probability, choose a random action, else return the best answer
-        if np.random.random() < self.eps_start:
-            return env.action_space.sample()
+        randomValue = np.random.random()
+        if randomValue < self.eps_start:
+            randomAction = env.action_space.sample()
+            return randomAction
         else:
             return np.argmax(self.sess.run(self.train_network, feed_dict={self.observation_input: obs}))
 
@@ -121,22 +124,23 @@ class DQN(object):
         if len(self.replay_memory.memory) > self.min_replay_size:
 
             transitions = self.replay_memory.sample(self.batch_size)
-            state, action, next_state, reward, terminal = Transition(*zip(*transitions))
-            action = self.encode_action(action)
+            states, actions, next_states, rewards, is_terminal_list = Transition(*zip(*transitions))
+            actions = self.encode_action(actions) # Encode each of the actions as a 1 hot vector
 
-            state = np.asarray(state, dtype=np.float32)
-            state = np.reshape(state, (self.batch_size, 8))
-            next_state = np.asarray(next_state, dtype=np.float32)
-            next_state = np.reshape(next_state, (self.batch_size, 8))
-            terminal = np.array(terminal)
-            reward = np.array(reward)
+            # Reshape the arrays to be input into the model
+            states = np.asarray(states, dtype=np.float32)
+            states = np.reshape(states, (self.batch_size, 8))
+            next_states = np.asarray(next_states, dtype=np.float32)
+            next_states = np.reshape(next_states, (self.batch_size, 8))
+            is_terminal_list = np.array(is_terminal_list)
+            rewards = np.array(rewards)
 
-            target = reward + (1 - terminal) * self.gamma * np.max(
-                self.sess.run(self.target_network, feed_dict={self.observation_input: next_state}))
+            target = rewards + (1 - is_terminal_list) * self.gamma * np.max(
+                self.sess.run(self.target_network, feed_dict={self.observation_input: next_states}))
 
             self.sess.run(self.update_op, feed_dict={
-                self.observation_input: state,
-                self.action_input: action,
+                self.observation_input: states,
+                self.action_input: actions,
                 self.target_q_val: target})
 
 
@@ -178,9 +182,9 @@ class DQN(object):
 
         # If the number of steps is above a threshold then update the target model
         if self.num_steps_with_no_update > self.clone_steps:
-            self.sess.run(self.update_target)
+            self.sess.run(self.update_operations)
             self.num_steps_with_no_update = 0
-            print("Updated target model")
+            #print("Updated target model")
 
         self.eps_start *= self.eps_decay
         self.num_episodes += 1
@@ -193,8 +197,8 @@ class DQN(object):
             rewardObservations[t] = self.gamma * rewardObservations[t + 1] + rewardObservations[t]
 
 		# Normalize
-        #rewardObservations -= np.mean(rewardObservations)
-        #rewardObservations /= np.std(rewardObservations)
+        rewardObservations -= np.mean(rewardObservations)
+        rewardObservations /= np.std(rewardObservations)
 
         # Now that the rewards are updated, write to replay mem using the new reward value
         for i in range(0, len(episodeObservations)):
